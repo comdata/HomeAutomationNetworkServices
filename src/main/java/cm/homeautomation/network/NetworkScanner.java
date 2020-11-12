@@ -17,9 +17,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import cm.homeautomation.mqtt.client.MQTTSendEvent;
 import cm.homeautomation.mqtt.client.NetworkScanEvent;
+import io.quarkus.runtime.Startup;
 import io.quarkus.vertx.ConsumeEvent;
 import io.vertx.core.eventbus.EventBus;
 
+@Startup
 @ApplicationScoped
 public class NetworkScanner {
 
@@ -32,7 +34,7 @@ public class NetworkScanner {
 
 	@ConsumeEvent(value = "NetworkScanEvent", blocking = true)
 	public void scanNetwork(NetworkScanEvent event) {
-
+		scanNetworkInternal(event.getSubnet());
 	}
 
 	public Map<String, NetworkDevice> getAvailableHosts() {
@@ -138,8 +140,7 @@ public class NetworkScanner {
 		return null;
 	}
 
-	public void scanNetworkInternal(String[] args) {
-		String subnet = args[0];
+	public void scanNetworkInternal(String subnet) {
 
 		ObjectMapper mapper = new ObjectMapper();
 
