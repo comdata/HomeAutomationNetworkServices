@@ -48,9 +48,6 @@ public class ReactiveMQTTReceiverClient {
 			if (throwable != null) {
 				// Handle connection failure
 			} else {
-
-//					topicFilter("zigbee2mqtt").topicFilter("ebusd")
-
 				client.subscribeWith().topicFilter("networkServices/#").callback(publish -> {
 
 					Runnable runThread = () -> {
@@ -59,7 +56,7 @@ public class ReactiveMQTTReceiverClient {
 						String topic = publish.getTopic().toString();
 						String messageContent = new String(publish.getPayloadAsBytes());
 						LogManager.getLogger(this.getClass()).debug("Topic: " + topic + " " + messageContent);
-
+						System.out.println("Topic: " + topic + " " + messageContent);
 					};
 					new Thread(runThread).start();
 				}).send().whenComplete((subAck, e) -> {
