@@ -2,18 +2,24 @@ package cm.homeautomation.ssh.client;
 
 import java.io.ByteArrayOutputStream;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
 
+import cm.homeautomation.mqtt.client.MQTTSendEvent;
 import io.quarkus.runtime.Startup;
 import io.quarkus.vertx.ConsumeEvent;
+import io.vertx.core.eventbus.EventBus;
 
 @Startup
 @Singleton
 public class SshCommandClient {
+	
+	@Inject
+	EventBus bus;
 
 	@ConsumeEvent(value = "SSHCommand", blocking=true)
 	public void callSshCommand(SSHCommand sshCommand) throws Exception {
@@ -44,6 +50,11 @@ public class SshCommandClient {
 	        }
 	        
 	        String responseString = new String(responseStream.toByteArray());
+	        
+
+			bus.publish("MQTTSendEvent", new MQTTSendEvent("networkServices/sshCommandResult", responseString));
+
+	        
 	        System.out.println(responseString);
 	    } finally {
 	        if (session != null) {
