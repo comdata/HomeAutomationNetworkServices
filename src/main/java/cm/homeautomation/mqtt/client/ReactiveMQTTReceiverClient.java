@@ -1,5 +1,6 @@
 package cm.homeautomation.mqtt.client;
 
+import java.io.IOException;
 import java.util.UUID;
 
 import javax.enterprise.event.Observes;
@@ -9,26 +10,28 @@ import javax.inject.Singleton;
 import org.apache.log4j.LogManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hivemq.client.mqtt.MqttClient;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
 
+import cm.homeautomation.network.NetworkWakeupEvent;
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.core.eventbus.EventBus;
 
 @Singleton
 public class ReactiveMQTTReceiverClient {
-	private static ObjectMapper mapper = new ObjectMapper();
 
 	@Inject
 	EventBus bus;
-	
+
 	@ConfigProperty(name = "mqtt.host")
 	String host;
-	
-	@ConfigProperty(name="mqtt.port")
+
+	@ConfigProperty(name = "mqtt.port")
 	int port;
-	
+
 	private Mqtt3AsyncClient buildAClient(String host, int port) {
 		return MqttClient.builder().useMqttVersion3().identifier(UUID.randomUUID().toString()).serverHost(host)
 				.serverPort(port).automaticReconnect().applyAutomaticReconnect().buildAsync();
@@ -38,11 +41,10 @@ public class ReactiveMQTTReceiverClient {
 		initClient();
 
 	}
-	
+
 	private void initClient() {
 
 		Mqtt3AsyncClient client = buildAClient(host, port);
-
 
 		client.connect().whenComplete((connAck, throwable) -> {
 			if (throwable != null) {
@@ -57,6 +59,18 @@ public class ReactiveMQTTReceiverClient {
 						String messageContent = new String(publish.getPayloadAsBytes());
 						LogManager.getLogger(this.getClass()).debug("Topic: " + topic + " " + messageContent);
 						System.out.println("Topic: " + topic + " " + messageContent);
+
+						if (topic.startsWith("networkServices/wakeup")) {
+							try {
+								ObjectMapper objectMapper = new ObjectMapper();
+								NetworkWakeupEvent networkWakeupEvent = objectMapper.readValue(messageContent,
+										NetworkWakeupEvent.class);
+								bus.publish("NetworkWakeupEvent", networkWakeupEvent);
+							} catch (IOException e) {
+
+							}
+						}
+
 					};
 					new Thread(runThread).start();
 				}).send().whenComplete((subAck, e) -> {
