@@ -62,7 +62,7 @@ public class ReactiveMQTTReceiverClient {
 							handleWOL(messageContent);
 						}
 
-						if (topic.startsWith("networkServices/scan")) {
+						if (topic.equals("networkServices/scan")) {
 							handleScan(messageContent);
 						}
 
