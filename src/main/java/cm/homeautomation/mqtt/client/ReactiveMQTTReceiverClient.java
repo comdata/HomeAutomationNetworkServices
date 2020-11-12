@@ -10,8 +10,6 @@ import javax.inject.Singleton;
 import org.apache.log4j.LogManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hivemq.client.mqtt.MqttClient;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
@@ -61,13 +59,16 @@ public class ReactiveMQTTReceiverClient {
 						System.out.println("Topic: " + topic + " " + messageContent);
 
 						if (topic.startsWith("networkServices/wakeup")) {
+							System.out.println("sending a wakeup event");
 							try {
 								ObjectMapper objectMapper = new ObjectMapper();
 								NetworkWakeupEvent networkWakeupEvent = objectMapper.readValue(messageContent,
 										NetworkWakeupEvent.class);
-								bus.publish("NetworkWakeupEvent", networkWakeupEvent);
+								System.out.println("Mac:" +networkWakeupEvent.getMac());
+								bus.publish("NetworkWakeUpEvent", networkWakeupEvent);
+								System.out.println("Send wakeup event");
 							} catch (IOException e) {
-
+								e.printStackTrace();
 							}
 						}
 

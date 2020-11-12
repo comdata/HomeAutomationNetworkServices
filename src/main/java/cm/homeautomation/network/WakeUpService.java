@@ -4,6 +4,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
+import javax.enterprise.context.ApplicationScoped;
+
 import org.apache.logging.log4j.LogManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -11,6 +13,7 @@ import io.quarkus.runtime.Startup;
 import io.quarkus.vertx.ConsumeEvent;
 
 @Startup
+@ApplicationScoped
 public class WakeUpService {
 
 	@ConfigProperty(name="network.wakeup.broadcast.address")
@@ -44,6 +47,7 @@ public class WakeUpService {
 			System.out.println("wakeup sent.");
 
 		} catch (final Exception e) {
+			e.printStackTrace();
 			LogManager.getLogger(this.getClass()).info("Failed to send Wake-on-LAN packet: + e");
 		}
 
