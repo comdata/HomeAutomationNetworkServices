@@ -15,6 +15,7 @@ import com.hivemq.client.mqtt.MqttClient;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
 
 import cm.homeautomation.network.NetworkWakeupEvent;
+import cm.homeautomation.ssh.client.SSHCommand;
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.core.eventbus.EventBus;
 
@@ -65,6 +66,11 @@ public class ReactiveMQTTReceiverClient {
 						if (topic.equals("networkServices/scan")) {
 							handleScan(messageContent);
 						}
+						
+						if (topic.equals("networkServices/sshCommand")) {
+							handleSshCommand(messageContent);
+						}
+
 
 					};
 					new Thread(runThread).start();
@@ -89,6 +95,17 @@ public class ReactiveMQTTReceiverClient {
 			ObjectMapper objectMapper = new ObjectMapper();
 			NetworkScanEvent networkScanEvent = objectMapper.readValue(messageContent, NetworkScanEvent.class);
 			bus.publish("NetworkScanEvent", networkScanEvent);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void handleSshCommand(String messageContent) {
+		System.out.println("Got Ssh request");
+		try {
+			ObjectMapper objectMapper = new ObjectMapper();
+			SSHCommand sshCommandEvent = objectMapper.readValue(messageContent, SSHCommand.class);
+			bus.publish("SSHCommand", sshCommandEvent);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
