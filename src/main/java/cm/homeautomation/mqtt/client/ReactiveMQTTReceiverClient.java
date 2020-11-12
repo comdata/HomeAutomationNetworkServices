@@ -59,17 +59,11 @@ public class ReactiveMQTTReceiverClient {
 						System.out.println("Topic: " + topic + " " + messageContent);
 
 						if (topic.startsWith("networkServices/wakeup")) {
-							System.out.println("sending a wakeup event");
-							try {
-								ObjectMapper objectMapper = new ObjectMapper();
-								NetworkWakeupEvent networkWakeupEvent = objectMapper.readValue(messageContent,
-										NetworkWakeupEvent.class);
-								System.out.println("Mac:" +networkWakeupEvent.getMac());
-								bus.publish("NetworkWakeUpEvent", networkWakeupEvent);
-								System.out.println("Send wakeup event");
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
+							handleWOL(messageContent);
+						}
+						
+						if (topic.startsWith("networkServices/scan")) {
+							handleScan(messageContent);
 						}
 
 					};
@@ -87,6 +81,25 @@ public class ReactiveMQTTReceiverClient {
 			}
 		});
 
+	}
+
+	private void handleScan(String messageContent) {
+		System.out.println("Got Network Scan request");
+		
+	}
+
+	private void handleWOL(String messageContent) {
+		System.out.println("sending a wakeup event");
+		try {
+			ObjectMapper objectMapper = new ObjectMapper();
+			NetworkWakeupEvent networkWakeupEvent = objectMapper.readValue(messageContent,
+					NetworkWakeupEvent.class);
+			System.out.println("Mac:" +networkWakeupEvent.getMac());
+			bus.publish("NetworkWakeUpEvent", networkWakeupEvent);
+			System.out.println("Send wakeup event");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 }
