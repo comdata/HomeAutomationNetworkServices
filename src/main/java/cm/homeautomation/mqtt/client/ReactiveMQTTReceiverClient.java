@@ -57,7 +57,7 @@ public class ReactiveMQTTReceiverClient {
 						String topic = publish.getTopic().toString();
 						String messageContent = new String(publish.getPayloadAsBytes());
 						LogManager.getLogger(this.getClass()).debug("Topic: " + topic + " " + messageContent);
-						System.out.println("Topic: " + topic + " " + messageContent);
+						//System.out.println("Topic: " + topic + " " + messageContent);
 
 						if (topic.startsWith("networkServices/wakeup")) {
 							handleWOL(messageContent);
@@ -90,7 +90,7 @@ public class ReactiveMQTTReceiverClient {
 	}
 
 	private void handleScan(String messageContent) {
-		System.out.println("Got Network Scan request");
+		//System.out.println("Got Network Scan request");
 		try {
 			ObjectMapper objectMapper = new ObjectMapper();
 			NetworkScanEvent networkScanEvent = objectMapper.readValue(messageContent, NetworkScanEvent.class);
@@ -116,9 +116,9 @@ public class ReactiveMQTTReceiverClient {
 		try {
 			ObjectMapper objectMapper = new ObjectMapper();
 			NetworkWakeupEvent networkWakeupEvent = objectMapper.readValue(messageContent, NetworkWakeupEvent.class);
-			System.out.println("Mac:" + networkWakeupEvent.getMac());
+			//System.out.println("Mac:" + networkWakeupEvent.getMac());
 			bus.publish("NetworkWakeUpEvent", networkWakeupEvent);
-			System.out.println("Send wakeup event");
+			//System.out.println("Send wakeup event");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
