@@ -70,33 +70,10 @@
 			<artifactId>quarkus-vertx</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.hivemq</groupId>
-			<artifactId>hivemq-mqtt-client</artifactId>
-			<version>1.2.1</version>
+			<groupId>org.apache.camel.quarkus</groupId>
+			<artifactId>camel-quarkus-paho</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>com.hivemq</groupId>
-			<artifactId>hivemq-mqtt-client-websocket</artifactId>
-			<version>1.2.1</version>
-			<type>pom</type>
-		</dependency>
-		<dependency>
-			<groupId>com.hivemq</groupId>
-			<artifactId>hivemq-mqtt-client-proxy</artifactId>
-			<version>1.2.1</version>
-			<type>pom</type>
-		</dependency>
-		<dependency>
-			<groupId>com.hivemq</groupId>
-			<artifactId>hivemq-mqtt-client-epoll</artifactId>
-			<version>1.2.1</version>
-			<type>pom</type>
-		</dependency>
-		<dependency>
-			<groupId>com.hivemq</groupId>
-			<artifactId>hivemq-mqtt-client-reactor</artifactId>
-			<version>1.2.1</version>
-		</dependency>
+
 		<dependency>
 			<groupId>org.jboss.logmanager</groupId>
 			<artifactId>log4j-jboss-logmanager</artifactId>

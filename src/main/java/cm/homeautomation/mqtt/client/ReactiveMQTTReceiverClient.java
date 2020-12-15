@@ -9,10 +9,16 @@ import javax.inject.Singleton;
 
 import org.apache.log4j.LogManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.context.ManagedExecutor;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hivemq.client.mqtt.MqttClient;
-import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
 
 import cm.homeautomation.network.NetworkWakeupEvent;
 import cm.homeautomation.ssh.client.SSHCommand;
@@ -20,7 +26,7 @@ import io.quarkus.runtime.StartupEvent;
 import io.vertx.core.eventbus.EventBus;
 
 @Singleton
-public class ReactiveMQTTReceiverClient {
+public class ReactiveMQTTReceiverClient implements MqttCallback {
 
 	@Inject
 	EventBus bus;
@@ -31,10 +37,14 @@ public class ReactiveMQTTReceiverClient {
 	@ConfigProperty(name = "mqtt.port")
 	int port;
 
-	private Mqtt3AsyncClient buildAClient(String host, int port) {
-		return MqttClient.builder().useMqttVersion3().identifier(UUID.randomUUID().toString()).serverHost(host)
-				.serverPort(port).automaticReconnect().applyAutomaticReconnect().buildAsync();
-	}
+	@Inject
+	ManagedExecutor executor;
+
+	private MqttClient client;
+
+	private MemoryPersistence memoryPersistence = new MemoryPersistence();
+	
+	private static final String MQTT_EXCEPTION = "MQTT Exception.";
 
 	void startup(@Observes StartupEvent event) {
 		initClient();
@@ -42,55 +52,77 @@ public class ReactiveMQTTReceiverClient {
 	}
 
 	private void initClient() {
+		try {
+			System.out.println("Connecting MQTT");
+			UUID uuid = UUID.randomUUID();
+			String randomUUIDString = uuid.toString();
 
-		Mqtt3AsyncClient client = buildAClient(host, port);
+			client = new MqttClient("tcp://" + host + ":" + port, "HomeAutomation/" + randomUUIDString,
+					memoryPersistence);
 
-		client.connect().whenComplete((connAck, throwable) -> {
-			if (throwable != null) {
-				// Handle connection failure
-			} else {
-				client.subscribeWith().topicFilter("networkServices/#").callback(publish -> {
+			client.setCallback(this);
 
-					Runnable runThread = () -> {
-						// Process the received message
+			MqttConnectOptions connOpt = new MqttConnectOptions();
+			connOpt.setAutomaticReconnect(true);
+			connOpt.setCleanSession(false);
+			connOpt.setKeepAliveInterval(10);
+			connOpt.setConnectionTimeout(5);
+			connOpt.setMaxInflight(10);
+			connOpt.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1);
 
-						String topic = publish.getTopic().toString();
-						String messageContent = new String(publish.getPayloadAsBytes());
-						LogManager.getLogger(this.getClass()).debug("Topic: " + topic + " " + messageContent);
-						//System.out.println("Topic: " + topic + " " + messageContent);
+			client.connect(connOpt);
 
-						if (topic.startsWith("networkServices/wakeup")) {
-							handleWOL(messageContent);
-						}
+			client.subscribe("networkServices/#");
+			System.out.println("Connected to MQTT");
+		} catch (MqttException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 
-						if (topic.equals("networkServices/scan")) {
-							handleScan(messageContent);
-						}
-						
-						if (topic.equals("networkServices/sshCommand")) {
-							handleSshCommand(messageContent);
-						}
+	@Override
+	public void connectionLost(Throwable cause) {
 
+		try {
+			client.close();
+			client.disconnect();
+		} catch (MqttException e1) {
+			LogManager.getLogger(this.getClass()).error("force close failed.", e1);
+		}
+		LogManager.getLogger(this.getClass()).info("trying reconnect to MQTT broker");
+		initClient();
+	}
 
-					};
-					new Thread(runThread).start();
-				}).send().whenComplete((subAck, e) -> {
-					if (e != null) {
-						// Handle failure to subscribe
-						LogManager.getLogger(this.getClass()).error(e);
-					} else {
-						// Handle successful subscription, e.g. logging or incrementing a metric
-						LogManager.getLogger(this.getClass())
-								.debug("successfully subscribed. Type: " + subAck.getType().name());
-					}
-				});
+	@Override
+	public void messageArrived(String topic, MqttMessage message) throws Exception {
+
+		String messageContent = new String(message.getPayload());
+
+		Runnable runThread = () -> {
+			// Process the received message
+
+			LogManager.getLogger(this.getClass()).debug("Topic: " + topic + " " + messageContent);
+			System.out.println("Topic: " + topic + " " + messageContent);
+
+			if (topic.startsWith("networkServices/wakeup")) {
+				handleWOL(messageContent);
 			}
-		});
+
+			if (topic.equals("networkServices/scan")) {
+				handleScan(messageContent);
+			}
+
+			if (topic.equals("networkServices/sshCommand")) {
+				handleSshCommand(messageContent);
+			}
+
+		};
+		executor.runAsync(runThread);
 
 	}
 
 	private void handleScan(String messageContent) {
-		//System.out.println("Got Network Scan request");
+		// System.out.println("Got Network Scan request");
 		try {
 			ObjectMapper objectMapper = new ObjectMapper();
 			NetworkScanEvent networkScanEvent = objectMapper.readValue(messageContent, NetworkScanEvent.class);
@@ -99,7 +131,7 @@ public class ReactiveMQTTReceiverClient {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private void handleSshCommand(String messageContent) {
 		System.out.println("Got Ssh request");
 		try {
@@ -116,12 +148,18 @@ public class ReactiveMQTTReceiverClient {
 		try {
 			ObjectMapper objectMapper = new ObjectMapper();
 			NetworkWakeupEvent networkWakeupEvent = objectMapper.readValue(messageContent, NetworkWakeupEvent.class);
-			//System.out.println("Mac:" + networkWakeupEvent.getMac());
+			// System.out.println("Mac:" + networkWakeupEvent.getMac());
 			bus.publish("NetworkWakeUpEvent", networkWakeupEvent);
-			//System.out.println("Send wakeup event");
+			// System.out.println("Send wakeup event");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	@Override
+	public void deliveryComplete(IMqttDeliveryToken token) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }
