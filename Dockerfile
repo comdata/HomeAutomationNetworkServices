@@ -19,6 +19,17 @@ ENV JAVA_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jb
 ENV AB_ENABLED=jmx_exporter
 COPY target/lib/* /lib/
 COPY target/*-runner.jar /app.jar
+COPY target/*-runner /runner
 
-ENTRYPOINT ["sh", "-c", "java -jar /app.jar" ]
+COPY entrypoint.java.sh entrypoint.java.sh
+COPY entrypoint.native.sh entrypoint.native.sh
+
+RUN	apkArch="$(apk --print-arch)"; \
+	case "$apkArch" in \
+		x86) cp entrypoint.native.sh  /entrypoint.sh;; \
+		*) cp entrypoint.java.sh  /entrypoint.sh;;  \
+	esac; \	
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["sh", "-c", "/entrypoint.sh" ]
 
