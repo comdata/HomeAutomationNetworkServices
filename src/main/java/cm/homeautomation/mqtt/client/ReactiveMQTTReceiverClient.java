@@ -21,7 +21,6 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import cm.homeautomation.network.NetworkWakeupEvent;
-import cm.homeautomation.ssh.client.SSHCommand;
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.core.eventbus.EventBus;
 
@@ -43,8 +42,7 @@ public class ReactiveMQTTReceiverClient implements MqttCallback {
 	private MqttClient client;
 
 	private MemoryPersistence memoryPersistence = new MemoryPersistence();
-	
-	private static final String MQTT_EXCEPTION = "MQTT Exception.";
+
 
 	void startup(@Observes StartupEvent event) {
 		initClient();
@@ -112,10 +110,6 @@ public class ReactiveMQTTReceiverClient implements MqttCallback {
 				handleScan(messageContent);
 			}
 
-			if (topic.equals("networkServices/sshCommand")) {
-				handleSshCommand(messageContent);
-			}
-
 		};
 		executor.runAsync(runThread);
 
@@ -132,16 +126,6 @@ public class ReactiveMQTTReceiverClient implements MqttCallback {
 		}
 	}
 
-	private void handleSshCommand(String messageContent) {
-		System.out.println("Got Ssh request");
-		try {
-			ObjectMapper objectMapper = new ObjectMapper();
-			SSHCommand sshCommandEvent = objectMapper.readValue(messageContent, SSHCommand.class);
-			bus.publish("SSHCommand", sshCommandEvent);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
 	private void handleWOL(String messageContent) {
 		System.out.println("sending a wakeup event");
